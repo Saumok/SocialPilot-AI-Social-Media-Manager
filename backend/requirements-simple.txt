@@ -1,0 +1,37 @@
+# Core FastAPI dependencies
+fastapi
+uvicorn[standard]
+python-multipart
+
+# Database
+sqlalchemy
+alembic
+psycopg2-binary
+
+# AI Services
+openai
+anthropic
+
+# Social Media APIs
+tweepy
+requests
+
+# Background Tasks
+celery
+redis
+
+# Authentication & Security
+python-jose[cryptography]
+passlib[bcrypt]
+
+# HTTP and requests
+httpx
+
+# Configuration
+pydantic
+pydantic-settings
+python-dotenv
+
+# Utilities
+python-dateutil
+pillow

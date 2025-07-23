@@ -24,7 +24,7 @@ class Analytics(Base):
     reach = Column(Integer, default=0)
     
     # Additional data
-    metadata = Column(JSON)  # Platform-specific additional metrics
+    extra_data = Column(JSON)  # Platform-specific additional metrics
     
     # Timestamps
     recorded_at = Column(DateTime(timezone=True), server_default=func.now())
