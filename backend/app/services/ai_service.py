@@ -1,4 +1,4 @@
-import openai
+from openai import OpenAI
 from typing import List, Optional
 from app.core.config import settings
 from app.schemas.content import ContentGeneration, ContentGenerationRequest
@@ -6,17 +6,22 @@ from app.schemas.content import ContentGeneration, ContentGenerationRequest
 class AIService:
     def __init__(self):
         if settings.OPENAI_API_KEY:
-            openai.api_key = settings.OPENAI_API_KEY
+            self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        else:
+            self.client = None
     
     async def generate_content(self, request: ContentGenerationRequest) -> ContentGeneration:
         """Generate AI content based on request parameters"""
         try:
+            if not self.client:
+                return self._generate_fallback_content(request)
+            
             # Build the prompt based on request parameters
             prompt = self._build_prompt(request)
             
-            # Call OpenAI API
-            response = await openai.ChatCompletion.acreate(
-                model="gpt-4",
+            # Call OpenAI API with new format
+            response = self.client.chat.completions.create(
+                model="gpt-3.5-turbo",  # Using gpt-3.5-turbo as it's more cost-effective
                 messages=[
                     {"role": "system", "content": "You are a social media content creator expert."},
                     {"role": "user", "content": prompt}
@@ -42,6 +47,7 @@ class AIService:
             )
             
         except Exception as e:
+            print(f"OpenAI API Error: {e}")
             # Fallback to template-based generation if AI fails
             return self._generate_fallback_content(request)
     

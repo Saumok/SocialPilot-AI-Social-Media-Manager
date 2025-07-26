@@ -12,6 +12,15 @@ const Dashboard = ({ onLogout, onBackendMonitor }) => {
   ]);
 
   const [activeTab, setActiveTab] = useState('overview');
+  
+  // Content generation state
+  const [contentForm, setContentForm] = useState({
+    topic: '',
+    platform: 'twitter',
+    tone: 'professional'
+  });
+  const [generatedContent, setGeneratedContent] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const handleConnectPlatform = (platformName) => {
     setConnectedPlatforms(prev => 
@@ -21,6 +30,67 @@ const Dashboard = ({ onLogout, onBackendMonitor }) => {
           : platform
       )
     );
+  };
+
+  // Handle form input changes
+  const handleContentFormChange = (e) => {
+    const { name, value } = e.target;
+    setContentForm(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Generate content using OpenAI API
+  const handleGenerateContent = async () => {
+    if (!contentForm.topic.trim()) {
+      alert('Please enter a content topic');
+      return;
+    }
+
+    setIsGenerating(true);
+    setGeneratedContent('');
+
+    try {
+      console.log('Sending request with data:', {
+        topic: contentForm.topic,
+        platform: contentForm.platform,
+        tone: contentForm.tone
+      });
+
+      const response = await fetch('http://localhost:8000/api/v1/content/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          topic: contentForm.topic,
+          platform: contentForm.platform,
+          tone: contentForm.tone,
+          include_hashtags: true,
+          include_emojis: true
+        })
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Response data:', data);
+        setGeneratedContent(data.content || 'Content generated successfully but no content field found');
+      } else {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error(`Server error: ${response.status} - ${errorText}`);
+      }
+    } catch (error) {
+      console.error('Error generating content:', error);
+      setGeneratedContent(`Error: ${error.message}. Please check the console for more details.`);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const stats = {
@@ -540,44 +610,68 @@ const Dashboard = ({ onLogout, onBackendMonitor }) => {
               <div className="generator-form">
                 <div className="form-group">
                   <label>Content Topic</label>
-                  <input type="text" placeholder="e.g., AI in marketing, productivity tips..." />
+                  <input 
+                    type="text" 
+                    name="topic"
+                    value={contentForm.topic}
+                    onChange={handleContentFormChange}
+                    placeholder="e.g., AI in marketing, productivity tips..." 
+                  />
                 </div>
                 
                 <div className="form-row">
                   <div className="form-group">
                     <label>Platform</label>
-                    <select>
-                      <option>Twitter</option>
-                      <option>Instagram</option>
-                      <option>Facebook</option>
-                      <option>LinkedIn</option>
+                    <select 
+                      name="platform"
+                      value={contentForm.platform}
+                      onChange={handleContentFormChange}
+                    >
+                      <option value="twitter">Twitter</option>
+                      <option value="instagram">Instagram</option>
+                      <option value="facebook">Facebook</option>
+                      <option value="linkedin">LinkedIn</option>
                     </select>
                   </div>
                   
                   <div className="form-group">
                     <label>Tone</label>
-                    <select>
-                      <option>Professional</option>
-                      <option>Casual</option>
-                      <option>Funny</option>
-                      <option>Inspirational</option>
+                    <select 
+                      name="tone"
+                      value={contentForm.tone}
+                      onChange={handleContentFormChange}
+                    >
+                      <option value="professional">Professional</option>
+                      <option value="casual">Casual</option>
+                      <option value="funny">Funny</option>
+                      <option value="inspirational">Inspirational</option>
                     </select>
                   </div>
                 </div>
                 
-                <button className="btn btn-primary generate-btn">
-                  ✨ Generate Content
+                <button 
+                  className="btn btn-primary generate-btn"
+                  onClick={handleGenerateContent}
+                  disabled={isGenerating}
+                >
+                  {isGenerating ? '⏳ Generating...' : '✨ Generate Content'}
                 </button>
               </div>
               
               <div className="generated-content">
                 <h4>Generated Content</h4>
                 <div className="content-preview">
-                  <p>Click "Generate Content" to create AI-powered posts for your social media platforms.</p>
-                  <div className="content-actions">
-                    <button className="btn btn-secondary" disabled>Edit</button>
-                    <button className="btn btn-primary" disabled>Schedule</button>
-                  </div>
+                  {generatedContent ? (
+                    <>
+                      <p>{generatedContent}</p>
+                      <div className="content-actions">
+                        <button className="btn btn-secondary">Edit</button>
+                        <button className="btn btn-primary">Schedule</button>
+                      </div>
+                    </>
+                  ) : (
+                    <p>Click "Generate Content" to create AI-powered posts for your social media platforms.</p>
+                  )}
                 </div>
               </div>
             </div>

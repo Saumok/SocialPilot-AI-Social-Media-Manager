@@ -62,12 +62,22 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    # Email Configuration
+    SMTP_SERVER: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_EMAIL: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+
     # File Upload
     UPLOAD_PATH: str = "uploads"
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
 
+    # Development settings
+    ENVIRONMENT: str = "development"
+    DEBUG: bool = True
+
     class Config:
-        env_file = ".env"
+        env_file = "../../.env"  # Look for .env in project root
         case_sensitive = True
 
 

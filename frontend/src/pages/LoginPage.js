@@ -1,24 +1,52 @@
 import React, { useState } from 'react';
 import './LoginPage.css';
 import PlatformIcon from '../components/PlatformIcon';
+import apiService from '../services/api';
 
-const LoginPage = ({ onLogin, onBack }) => {
+const LoginPage = ({ onLogin, onBack, onNavigate }) => {
   const [formData, setFormData] = useState({
     email: '',
-    password: ''
+    password: '',
+    name: ''
   });
   const [isSignUp, setIsSignUp] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const handleInputChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
+    // Clear error when user starts typing
+    if (error) setError('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onLogin(formData);
+    setLoading(true);
+    setError('');
+
+    try {
+      if (isSignUp) {
+        // Register new user
+        await apiService.register(formData.email, formData.password, formData.name);
+        // After successful registration, log them in
+        await apiService.login(formData.email, formData.password);
+      } else {
+        // Login existing user
+        await apiService.login(formData.email, formData.password);
+      }
+      
+      // Call the parent component's onLogin callback
+      onLogin({ success: true });
+    } catch (err) {
+      setError(err.message || 'Authentication failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const socialPlatforms = [
@@ -53,6 +81,12 @@ const LoginPage = ({ onLogin, onBack }) => {
                 }
               </p>
 
+              {error && (
+                <div className="error-message">
+                  {error}
+                </div>
+              )}
+
               <form onSubmit={handleSubmit} className="login-form">
                 {isSignUp && (
                   <div className="form-group">
@@ -60,6 +94,8 @@ const LoginPage = ({ onLogin, onBack }) => {
                     <input
                       type="text"
                       name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
                       placeholder="Enter your full name"
                       required={isSignUp}
                     />
@@ -80,14 +116,23 @@ const LoginPage = ({ onLogin, onBack }) => {
 
                 <div className="form-group">
                   <label>Password</label>
-                  <input
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    placeholder="Enter your password"
-                    required
-                  />
+                  <div className="password-input-container">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      placeholder="Enter your password"
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="password-toggle-btn"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? '👁️' : '👁️‍🗨️'}
+                    </button>
+                  </div>
                 </div>
 
                 {!isSignUp && (
@@ -96,12 +141,18 @@ const LoginPage = ({ onLogin, onBack }) => {
                       <input type="checkbox" />
                       Remember me
                     </label>
-                    <a href="#forgot" className="forgot-link">Forgot password?</a>
+                    <button 
+                      type="button" 
+                      className="forgot-link"
+                      onClick={() => setShowForgotPassword(true)}
+                    >
+                      Forgot password?
+                    </button>
                   </div>
                 )}
 
-                <button type="submit" className="btn btn-primary login-btn">
-                  {isSignUp ? 'Create Account' : 'Sign In'}
+                <button type="submit" className="btn btn-primary login-btn" disabled={loading}>
+                  {loading ? 'Please wait...' : (isSignUp ? 'Create Account' : 'Sign In')}
                 </button>
               </form>
 
@@ -179,6 +230,124 @@ const LoginPage = ({ onLogin, onBack }) => {
                 </ul>
               </div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <ForgotPasswordModal 
+          onClose={() => setShowForgotPassword(false)}
+          onSuccess={() => {
+            setShowForgotPassword(false);
+            setError('');
+          }}
+          onNavigateToReset={() => {
+            setShowForgotPassword(false);
+            onNavigate('reset-password');
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+// Forgot Password Modal Component
+const ForgotPasswordModal = ({ onClose, onSuccess, onNavigateToReset }) => {
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const response = await apiService.forgotPassword(email);
+      setMessage(response.message || 'Password reset instructions have been sent to your email.');
+    } catch (err) {
+      setError(err.message || 'Failed to send reset email. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h3>Reset Password</h3>
+          <button className="modal-close-btn" onClick={onClose}>×</button>
+        </div>
+        
+        <div className="modal-body">
+          <p>Enter your email address and we'll send you instructions to reset your password.</p>
+          
+          {error && <div className="error-message">{error}</div>}
+          {message && (
+            <div className="success-message">
+              {message}
+              
+              <div style={{ marginTop: '20px', padding: '15px', background: '#e3f2fd', borderRadius: '8px', border: '1px solid #bbdefb' }}>
+                <p style={{ margin: '0 0 10px 0', fontWeight: '600', color: '#1565c0', fontSize: '14px' }}>
+                  📧 Check Your Email
+                </p>
+                <p style={{ margin: '0', fontSize: '13px', color: '#1976d2' }}>
+                  We've sent a reset token to your email address. Please check your inbox and spam folder.
+                </p>
+              </div>
+              
+              <div style={{ marginTop: '15px' }}>
+                <button 
+                  type="button" 
+                  className="btn btn-primary" 
+                  onClick={onNavigateToReset}
+                  style={{ fontSize: '14px', padding: '8px 16px' }}
+                >
+                  Enter Reset Token Now
+                </button>
+              </div>
+            </div>
+          )}
+          
+          {!message && (
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label>Email Address</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  required
+                />
+              </div>
+              
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={onClose}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={loading}>
+                  {loading ? 'Sending...' : 'Send Reset Link'}
+                </button>
+              </div>
+            </form>
+          )}
+          
+          <div style={{ marginTop: '20px', textAlign: 'center', borderTop: '1px solid #e9ecef', paddingTop: '15px' }}>
+            <p style={{ fontSize: '14px', color: '#6c757d', margin: '0 0 10px 0' }}>
+              Already have a reset token?
+            </p>
+            <button 
+              type="button" 
+              className="forgot-link"
+              onClick={onNavigateToReset}
+            >
+              Enter Reset Token
+            </button>
           </div>
         </div>
       </div>
